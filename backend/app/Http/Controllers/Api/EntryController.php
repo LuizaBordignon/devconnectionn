@@ -71,16 +71,15 @@ class EntryController extends Controller
     {
         $this->authorizeOwnership($request, $entry);
 
-        abort_if($entry->paid_at !== null, 422, 'Este lançamento já foi liquidado.');
-
         $data = $request->validate([
             'paid_amount' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        $entry->update([
-            'paid_at' => now(),
-            'paid_amount' => $data['paid_amount'],
-        ]);
+        try {
+            $entry->liquidar($data['paid_amount']);
+        } catch (\DomainException $e) {
+            abort(422, $e->getMessage());
+        }
 
         return $entry;
     }

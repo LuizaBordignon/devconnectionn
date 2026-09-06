@@ -18,6 +18,8 @@ class Entry extends Model
         'paid_amount',
     ];
 
+    protected $appends = ['status']; 
+    
     protected $casts = [
         'due_date'    => 'date',
         'paid_at'     => 'datetime',
@@ -47,4 +49,16 @@ class Entry extends Model
 
         return 'aberta';
     }
+
+    public function liquidar(float $valorPago): void
+{
+    if ($this->paid_at !== null) {
+        throw new \DomainException('Este lançamento já foi liquidado.');
+    }
+
+    $this->update([
+        'paid_at' => now(),
+        'paid_amount' => $valorPago,
+    ]);
+}
 }

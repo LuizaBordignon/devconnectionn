@@ -37,7 +37,7 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $user = User::where('email', $data['email'])->first();
+        $user = User::where('email', $data['email'])->first(); //ele vai buscar o usuário no banco de dados com base no email que foi passado na requisição. Se ele encontrar, ele vai retornar o usuário, se não, ele vai retornar null
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([
@@ -51,7 +51,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request)// o request é passado como parâmetro para que possamos acessar o usuário autenticado e deletar o token de acesso atual.
     {
         $request->user()->currentAccessToken()->delete();
 
