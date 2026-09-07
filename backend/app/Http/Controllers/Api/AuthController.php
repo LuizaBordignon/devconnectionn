@@ -26,7 +26,7 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => $user,
-            'token' => $user->createToken('api')->plainTextToken,
+            'token' => $user->createToken('api')->plainTextToken, // gera um token de acesso para o usuário recém-registrado, que pode ser usado para autenticação em futuras requisições à API.
         ], 201);
     }
 

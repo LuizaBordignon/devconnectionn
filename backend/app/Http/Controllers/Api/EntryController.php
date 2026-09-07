@@ -15,10 +15,10 @@ class EntryController extends Controller
             ->entries()
             ->with('contact')
             ->latest('due_date')
-            ->get();
+            ->get(); // esse método vai buscar todos os lançamentos do usuário autenticado, incluindo os dados do contato relacionado a cada lançamento, ordenando do mais recente para o mais antigo com base na data de vencimento, e retornando como uma coleção de lançamentos.
     }
 
-    public function store(Request $request)
+    public function store(Request $request) 
     {
         $data = $request->validate([
             'contact_id' => ['required', 'integer'],
@@ -28,7 +28,7 @@ class EntryController extends Controller
             'due_date' => ['required', 'date'],
         ]);
 
-        $contact = Contact::find($data['contact_id']);
+        $contact = Contact::find($data['contact_id']); 
         abort_if(!$contact || $contact->user_id !== $request->user()->id, 422, 'Contato inválido.');
 
         $entry = $request->user()->entries()->create($data);
@@ -46,6 +46,8 @@ class EntryController extends Controller
     public function update(Request $request, Entry $entry)
     {
         $this->authorizeOwnership($request, $entry);
+
+        abort_if($entry->paid_at !== null, 422, 'Não é possível editar um lançamento já liquidado.');
 
         $data = $request->validate([
             'description' => ['sometimes', 'required', 'string', 'max:255'],
@@ -94,4 +96,12 @@ class EntryController extends Controller
     {
         abort_if($entry->user_id !== $request->user()->id, 403, 'Este lançamento não pertence a você.');
     }
+
+    public function historico(Request $request, Entry $entry) 
+        {
+            $this->authorizeOwnership($request, $entry);
+
+            return $entry->editHistories;
+        }
+
 }

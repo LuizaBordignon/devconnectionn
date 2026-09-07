@@ -25,5 +25,7 @@ Route::middleware('auth:sanctum')->group(function () { //middleware checa se o t
     Route::get('/relatorio/periodo', [ReportController::class, 'periodo']);
     Route::post('/relatorio/fechamento', [PeriodClosureController::class, 'store']);
     Route::get('/relatorio/fechamento/{periodClosure}', [PeriodClosureController::class, 'show']);
+    Route::get('/contacts/{contact}/historico', [ContactController::class, 'historico']);
+    Route::get('/entries/{entry}/historico', [EntryController::class, 'historico']);
 
 });

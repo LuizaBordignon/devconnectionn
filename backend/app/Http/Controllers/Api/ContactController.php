@@ -13,7 +13,7 @@ class ContactController extends Controller
         return $request->user()
             ->contacts()
             ->latest()
-            ->get();
+            ->get(); // aqui ele vai buscar todos os contatos do usuário autenticado, ordenando do mais recente para o mais antigo, e retornando como uma coleção de contatos.
     }
 
     public function store(Request $request)
@@ -25,14 +25,14 @@ class ContactController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
         ]);
 
-        $contact = $request->user()->contacts()->create($data);
+        $contact = $request->user()->contacts()->create($data); //aqui ele vai criar um novo contato para o usuário autenticado, usando os dados validados da requisição. O método create() vai automaticamente preencher o campo user_id do contato com o ID do usuário autenticado, garantindo que o contato pertença a ele.
 
         return response()->json($contact, 201);
     }
 
     public function show(Request $request, Contact $contact)
     {
-        $this->authorizeOwnership($request, $contact);
+        $this->authorizeOwnership($request, $contact); //essa função é responsável por verificar se o contato pertence ao usuário autenticado. Se não pertencer, ele retorna um erro 403 (proibido).
 
         return $contact;
     }
@@ -72,4 +72,11 @@ class ContactController extends Controller
     {
         abort_if($contact->user_id !== $request->user()->id, 403, 'Este contato não pertence a você.');
     }
+
+    public function historico(Request $request, Contact $contact) // ou Entry $entry
+        {
+            $this->authorizeOwnership($request, $contact); // ou $entry
+
+            return $contact->editHistories; // ou $entry->editHistories
+        }
 }
