@@ -6,6 +6,12 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem('token'));
 
+  async function register(name, email, password) {
+    const { data } = await client.post('/register', { name, email, password });
+    localStorage.setItem('token', data.token);
+    setToken(data.token);
+  }
+
   async function login(email, password) {
     const { data } = await client.post('/login', { email, password });
     localStorage.setItem('token', data.token);
@@ -18,7 +24,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ token, login, logout }}>
+    <AuthContext.Provider value={{ token, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

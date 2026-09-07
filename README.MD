@@ -44,6 +44,17 @@ Senha: ___________________
 
 Alternativa: crie um usuário novo em `POST /api/register` (ou pela tela de login/registro do front) e cadastre os dados de exemplo na hora.
 
+## Funcionalidades
+
+- **Autenticação** por token (Sanctum), com isolamento total de dados por usuário.
+- **Contatos** (clientes/fornecedores): criar, listar, editar, apagar (bloqueado se houver lançamento vinculado), histórico de edições.
+- **Lançamentos**: criar, listar, editar (bloqueado se já liquidado), apagar (bloqueado se já liquidado), liquidar (com confirmação), histórico de edições.
+- **Status calculado** (aberta / atrasada / quitada) em tempo real, nunca armazenado.
+- **Avisos automáticos por e-mail** (próximo do vencimento e vencido), resilientes e sem duplicidade.
+- **Visão do período** (a pagar, a receber, liquidado, vencido) para um intervalo de datas.
+- **Fechamento do período** assíncrono, com envio de CSV por e-mail e consulta de status.
+- **Histórico de edições** para Contatos e Lançamentos, com visualização em modal.
+
 ## Como provocar na hora o que o sistema faria sozinho
 
 O disparo automático de avisos roda todo dia sozinho (`Schedule::command(...)->daily()`, processado pelo container `scheduler`). Para forçar sem esperar:
@@ -65,7 +76,9 @@ O fechamento de período (`POST /api/relatorio/fechamento`) já é assíncrono p
 - **Avisos automáticos via Job por lançamento, não um Job único gigante:** se um envio falhar, só aquele Job específico é reprocessado — os demais continuam normalmente. Trava contra duplicidade em duas camadas: colunas `due_soon_notified_at`/`overdue_notified_at` checadas dentro do próprio `handle()` do Job, mais um filtro no nível da consulta que dispara os Jobs.
 - **Cada lançamento recebe no máximo 2 avisos na vida (não é lembrete recorrente):** um ao entrar na janela de "próximo do vencimento", outro ao vencer. Decisão deliberada para não gerar spam ao usuário; interpretação alternativa (lembrete diário enquanto vencido) é factível trocando a condição do filtro.
 - **Fechamento de período como recurso próprio (`period_closures`), com status (`pendente`/`processando`/`concluido`/`falhou`):** permite responder `202` imediatamente e o usuário consultar o andamento depois. Trava contra duplicidade em duas camadas: `unique` composto no banco (`user_id` + período) e verificação no Controller antes de disparar um novo Job.
-- **Exclusão bloqueada em dois casos:** contato com lançamentos vinculados, e lançamento já liquidado. Nos dois casos, apagar apagaria rastro financeiro real — a API responde `422` com mensagem explicando o motivo.
+- **Exclusão e edição bloqueadas quando afetam dado financeiro consolidado:** contato com lançamentos vinculados não pode ser apagado; lançamento já liquidado não pode ser editado nem apagado. Nos três casos, a ação apagaria ou distorceria rastro financeiro real — a API responde `422` com mensagem explicando o motivo.
+- **Histórico de edição via tabela polimórfica única (`edit_histories`), não uma tabela por entidade:** um trait (`HasEditHistory`) escuta o evento `updating` do Eloquent e grava automaticamente uma cópia do estado anterior antes de qualquer alteração — funciona para Contato e Lançamento com o mesmo código, e se estende a qualquer Model futuro sem duplicar lógica.
+- **Liquidação simplificada para confirmação direta, sem pedir valor pago na tela:** decisão consciente de UX mais simples; o campo `paid_amount` continua existindo no banco (recebe o valor cheio do lançamento), já preparado para uma eventual liquidação parcial futura sem mudança de schema.
 - **`vendor/` e `node_modules/` isolados em volumes Docker nomeados**, não no bind mount da pasta do projeto: acesso a milhares de arquivos pequenos através da ponte Windows↔Linux do Docker Desktop é significativamente mais lento que num volume nativo — impacto direto no tempo de resposta da aplicação.
 - **Docker Compose escrito à mão, em vez de Laravel Sail:** menos automático, mas cada peça do ambiente (Dockerfile, variáveis, serviços) é compreendida e documentável, não abstraída por uma configuração pronta.
 
@@ -74,7 +87,7 @@ O fechamento de período (`POST /api/relatorio/fechamento`) já é assíncrono p
 - Testes automatizados
 - Deploy publicado
 - Juros e multa sobre valor em atraso
-- Liquidação parcial
+- Liquidação parcial (o campo `paid_amount` já existe, preparado para isso)
 - Categorias de despesa/receita
 - Integração contínua
 
@@ -86,19 +99,22 @@ O processo teve bastante fricção de ambiente (Windows + Docker + PHP, tudo nov
 - **Incompatibilidade de versão do PHP:** a imagem base do `Dockerfile` pedia PHP 8.3, mas o Laravel instalado (via imagem oficial do Composer) exigia 8.4 — containers em loop de restart até alinhar a versão.
 - **`.env` ainda apontando para SQLite** (o padrão de uma instalação nova do Laravel) mesmo com o PostgreSQL já configurado no Docker Compose — a conexão nunca tinha sido trocada de fato.
 - **Trait `HasApiTokens` do Sanctum não conectada ao Model `User`:** o pacote foi instalado, mas o Model precisa declarar o trait manualmente — sem isso, `createToken()` não existe.
-- **Rotas fora do grupo de middleware `auth:sanctum`** (coladas depois da chave de fechamento) ficavam sem proteção nenhuma — erro só perceptível porque `$request->user()` chegava `null` dentro do Controller, e não como um `401` esperado.
+- **Rotas fora do grupo de middleware `auth:sanctum`** (coladas depois da chave de fechamento) ficavam sem proteção nenhuma — erro só perceptível porque `$request->user()` chegava `null` dentro do Controller, e não como um `401` esperado. Aconteceu mais de uma vez, ao adicionar rotas novas (Entries, depois o histórico).
 - **Container do Mailpit sem a porta publicada**, por ter subido uma vez em estado de conflito de porta e ficado "preso" nessa configuração mesmo depois do conflito se resolver — corrigido recriando o container específico (`docker-compose rm -sf` + `up`).
-- **Processos de longa duração (`queue:work`, `schedule:work`) não recarregam `.env` nem código PHP sozinhos:** diferente do `php artisan serve` (que reprocessa a cada requisição), esses processos carregam tudo uma vez na inicialização — qualquer mudança em Jobs, Mailables ou configuração de e-mail exige `docker-compose restart queue scheduler`.
+- **Processos de longa duração (`queue:work`, `schedule:work`) não recarregam `.env` nem código PHP sozinhos:** diferente do `php artisan serve` (que reprocessa a cada requisição), esses processos carregam tudo uma vez na inicialização — qualquer mudança em Jobs, Mailables, Models ou configuração de e-mail exige `docker-compose restart queue scheduler`.
+- **Worker da fila "Up" no Docker, mas processando nada:** em pelo menos uma ocasião, o container `queue` aparecia com status `Up` normalmente, mas o processo interno tinha parado de consumir a fila — só perceptível comparando o horário dos Jobs despachados com o horário da última linha `DONE` no log, não pelo `docker-compose ps` sozinho.
 - **Performance do PHP dentro do Docker no Windows:** leitura de `vendor/` através do bind mount era lenta o bastante para deixar o login com ~5s de latência, mesmo com OPcache ativo — resolvido isolando `vendor/` (e depois `node_modules/`) em volumes Docker nomeados.
 - **`ParseError` por função duplicada:** ao atualizar o `ReportController`, uma edição por engano colou o método novo *dentro* do método antigo, em vez de substituí-lo — PHP não aceita função aninhada nesse contexto. Percebido pela mensagem de erro apontando a linha exata, corrigido reescrevendo o arquivo inteiro.
+- **Trait de histórico não encontrado (`App\Models\HasEditHistory not found`):** o trait foi criado em `App\Traits`, mas usado sem o `use App\Traits\HasEditHistory;` no topo do Model — o PHP assumiu, por padrão, que ele estaria no mesmo namespace do arquivo atual (`App\Models`). O erro derrubava qualquer rota que tocasse nos Models afetados, não só o histórico — inclusive mascarado como erro de CORS no navegador, já que uma resposta `500` fatal às vezes nem chega a anexar os cabeçalhos.
+- **Confusão com dados de teste acumulados:** ao longo de várias horas de testes manuais, ficaram no banco usuários gerados por `factory()` (nomes/e-mails aleatórios via Faker) e registros com erro de digitação (`mal2u2@teste.com`). Um disparo de aviso automático mandou e-mail para um desses usuários de teste antigos, o que a princípio pareceu um bug — na verdade era o isolamento por usuário funcionando corretamente até no processamento em segundo plano, só que sobre dado de teste esquecido.
 
 ## Uso de IA
 
-Todo o projeto foi desenvolvido em par com o Claude (Anthropic), que propôs a arquitetura (modelagem, padrão Job/Queue para resiliência, separação Model/Controller, estratégia de idempotência) e guiou a implementação passo a passo — eu nunca tinha trabalhado com PHP, Laravel ou Docker antes deste teste.
+Todo o projeto foi desenvolvido em par com o Claude (Anthropic), que propôs a arquitetura (modelagem, padrão Job/Queue para resiliência, separação Model/Controller, estratégia de idempotência, histórico via relação polimórfica) e guiou a implementação passo a passo — eu nunca tinha trabalhado com PHP, Laravel ou Docker antes deste teste.
 
-**O que funcionou bem:** o desenho geral de resiliência (um Job por lançamento em vez de um processo monolítico, trava de duplicidade em camadas, o padrão `202 Accepted` + consulta de status para o fechamento assíncrono) foi proposto de forma sólida e implementado sem retrabalho estrutural. A depuração dirigida por logs (sempre buscar a mensagem de erro real antes de tentar qualquer correção) foi consistente do início ao fim.
+**O que funcionou bem:** o desenho geral de resiliência (um Job por lançamento em vez de um processo monolítico, trava de duplicidade em camadas, o padrão `202 Accepted` + consulta de status para o fechamento assíncrono) foi proposto de forma sólida e implementado sem retrabalho estrutural. A depuração dirigida por logs (sempre buscar a mensagem de erro real antes de tentar qualquer correção) foi consistente do início ao fim, mesmo em erros com sintomas enganosos (o `ParseError` que o navegador reportou como bloqueio de CORS, por exemplo).
 
-**Onde precisou de correção:** a modelagem inicial das foreign keys usava `cascadeOnDelete()` em `entries.contact_id` — o que apagaria lançamentos automaticamente junto com o contato, incluindo histórico já liquidado. Percebi esse risco ao testar a exclusão de um contato com lançamento vinculado, e pedi a correção: a exclusão em cascata foi trocada por um bloqueio explícito (`422`) tanto para contatos com lançamentos quanto para lançamentos já pagos. Também aconteceram duas colisões de edição (um método duplicado por engano dentro de outro, e um import duplicado) ao aplicar manualmente trechos de código sugeridos — resolvidas reescrevendo o arquivo inteiro em vez de tentar corrigir a edição parcial.
+**Onde precisou de correção:** a modelagem inicial das foreign keys usava `cascadeOnDelete()` em `entries.contact_id` — o que apagaria lançamentos automaticamente junto com o contato, incluindo histórico já liquidado. Percebi esse risco ao testar a exclusão de um contato com lançamento vinculado, e pedi a correção: a exclusão em cascata foi trocada por um bloqueio explícito (`422`) tanto para contatos com lançamentos quanto para lançamentos já pagos — a mesma pergunta se repetiu naturalmente quando propus a edição/exclusão de lançamentos, e a trava foi estendida por consistência. Também aconteceram colisões de edição ao aplicar manualmente trechos de código sugeridos (um método duplicado dentro de outro, um import duplicado, um trait referenciado sem o namespace correto) — resolvidas reescrevendo o arquivo inteiro em vez de tentar corrigir a edição parcial.
 
 ## Próximos passos (o que eu faria com mais tempo)
 

@@ -22,13 +22,15 @@ class PeriodClosureController extends Controller
             'end_date' => $data['end_date'],
         ]);
 
-        // Já existe e está em andamento ou já terminou -> não dispara de novo
-        if ($closure->exists && in_array($closure->status, ['pendente', 'processando', 'concluido'])) {
+        // Só bloqueia se já tem um pedido EM ANDAMENTO pra esse período 
+        // um fechamento já concluído ou que falhou pode ser refeito.
+        if ($closure->exists && in_array($closure->status, ['pendente', 'processando'])) {
             return response()->json($closure, 202);
         }
 
         $closure->status = 'pendente';
         $closure->error_message = null;
+        $closure->completed_at = null;
         $closure->save();
 
         ProcessPeriodClosureJob::dispatch($closure->id);

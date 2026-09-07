@@ -73,10 +73,10 @@ class ContactController extends Controller
         abort_if($contact->user_id !== $request->user()->id, 403, 'Este contato não pertence a você.');
     }
 
-    public function historico(Request $request, Contact $contact) // ou Entry $entry
+    public function historico(Request $request, Contact $contact) 
         {
-            $this->authorizeOwnership($request, $contact); // ou $entry
+            $this->authorizeOwnership($request, $contact); 
 
-            return $contact->editHistories; // ou $entry->editHistories
+            return $contact->editHistories;
         }
 }

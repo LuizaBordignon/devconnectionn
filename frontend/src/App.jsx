@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import ContactsPage from './pages/ContactsPage';
 import EntriesPage from './pages/EntriesPage';
 import ReportPage from './pages/ReportPage';
+import RegisterPage from './pages/RegisterPage';
 
 function PrivateRoute({ children }) {
   const { token } = useAuth();
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/contacts" element={<PrivateRoute><ContactsPage /></PrivateRoute>} />
           <Route path="/entries" element={<PrivateRoute><EntriesPage /></PrivateRoute>} />
           <Route path="/report" element={<PrivateRoute><ReportPage /></PrivateRoute>} />
+          <Route path="/register" element={<RegisterPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
-    public function periodo(Request $request)
+    public function periodo(Request $request) 
     {
         $data = $request->validate([
             'start_date' => ['required', 'date'],

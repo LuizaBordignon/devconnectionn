@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -30,6 +31,9 @@ export default function LoginPage() {
             {error && <p className="error-text">{error}</p>}
             <button className="btn" type="submit">Entrar</button>
         </form>
+        <p style={{ marginTop: 12, fontSize: '0.9rem' }}>
+          Não tem conta? <Link to="/register">Criar conta</Link>
+        </p>
         </div>
     </div>
     );
