@@ -54,13 +54,19 @@ class ContactController extends Controller
     }
 
     public function destroy(Request $request, Contact $contact)
-    {
-        $this->authorizeOwnership($request, $contact);
+        {
+            $this->authorizeOwnership($request, $contact);
 
-        $contact->delete();
+            abort_if(
+                $contact->entries()->exists(),
+                422,
+                'Não é possível apagar um contato com lançamentos vinculados.'
+            );
 
-        return response()->json(null, 204);
-    }
+            $contact->delete();
+
+            return response()->json(null, 204);
+        }
 
     private function authorizeOwnership(Request $request, Contact $contact): void
     {

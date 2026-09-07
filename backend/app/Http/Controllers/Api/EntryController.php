@@ -62,6 +62,12 @@ class EntryController extends Controller
     {
         $this->authorizeOwnership($request, $entry);
 
+        abort_if(
+            $entry->paid_at !== null,
+            422,
+            'Não é possível apagar um lançamento já liquidado.'
+        );
+
         $entry->delete();
 
         return response()->json(null, 204);

@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { getContacts, createContact, deleteContact } from '../api/contacts';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import Layout from '../components/Layout';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState([]);
   const [name, setName] = useState('');
   const [type, setType] = useState('cliente');
-  const { logout } = useAuth();
 
   async function load() {
     setContacts(await getContacts());
@@ -24,37 +22,48 @@ export default function ContactsPage() {
     load();
   }
 
-  async function handleDelete(id) {
-    await deleteContact(id);
-    load();
-  }
+    async function handleDelete(id) {
+    try {
+        await deleteContact(id);
+        load();
+    } catch (err) {
+        alert(err.response?.data?.message || 'Erro ao apagar contato.');
+    }
+}
 
-  return (
-    <div>
-      <nav>
-        <Link to="/contacts">Contatos</Link> | <Link to="/entries">Lançamentos</Link> | <Link to="/report">Relatório</Link>
-        {' '}<button onClick={logout}>Sair</button>
-      </nav>
+    return (
+    <Layout>
+        <h1>Contatos</h1>
 
-      <h1>Contatos</h1>
-
-      <form onSubmit={handleSubmit}>
+        <form className="card inline-form" onSubmit={handleSubmit}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome" required />
         <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="cliente">Cliente</option>
-          <option value="fornecedor">Fornecedor</option>
+            <option value="cliente">Cliente</option>
+            <option value="fornecedor">Fornecedor</option>
         </select>
-        <button type="submit">Adicionar</button>
-      </form>
+        <button className="btn" type="submit">Adicionar</button>
+        </form>
 
-      <ul>
-        {contacts.map((c) => (
-          <li key={c.id}>
-            {c.name} ({c.type})
-            <button onClick={() => handleDelete(c.id)}>Apagar</button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+        <table>
+        <thead>
+            <tr>
+            <th>Nome</th>
+            <th>Tipo</th>
+            <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {contacts.map((c) => (
+            <tr key={c.id}>
+                <td>{c.name}</td>
+                <td>{c.type === 'cliente' ? 'Cliente' : 'Fornecedor'}</td>
+                <td>
+                <button className="btn-danger" onClick={() => handleDelete(c.id)}>Apagar</button>
+                </td>
+            </tr>
+            ))}
+        </tbody>
+        </table>
+    </Layout>
+    );
 }

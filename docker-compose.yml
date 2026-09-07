@@ -26,6 +26,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend:/var/www
+      - backend_vendor:/var/www/vendor
     ports:
       - "8000:8000"
     environment:
@@ -48,6 +49,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend:/var/www
+      - backend_vendor:/var/www/vendor
     environment:
       DB_CONNECTION: pgsql
       DB_HOST: db
@@ -76,6 +78,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend:/var/www
+      - backend_vendor:/var/www/vendor
     environment:
       DB_CONNECTION: pgsql
       DB_HOST: db
@@ -101,3 +104,4 @@ services:
     
 volumes:
   db_data:
+  backend_vendor:
