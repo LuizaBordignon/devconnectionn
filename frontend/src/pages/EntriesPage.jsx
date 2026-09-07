@@ -27,20 +27,24 @@ export default function EntriesPage() {
   }
 
   async function handleLiquidar(entry) {
-    const valor = window.prompt('Valor pago:', entry.amount);
-    if (!valor) return;
-    await liquidarEntry(entry.id, Number(valor));
+    if (!window.confirm(`Confirma a liquidação de "${entry.description}" no valor de R$ ${entry.amount}?`)) {
+      return;
+    }
+    await liquidarEntry(entry.id, entry.amount);
     loadEntries();
   }
-
-  async function handleDelete(id) {
-    try {
-      await deleteEntry(id);
-      loadEntries();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Erro ao apagar lançamento.');
-    }
+  
+async function handleDelete(id) {
+  if (!window.confirm('Tem certeza que deseja excluir este lançamento?')) {
+    return;
   }
+  try {
+    await deleteEntry(id);
+    loadEntries();
+  } catch (err) {
+    alert(err.response?.data?.message || 'Erro ao apagar lançamento.');
+  }
+}
 
   return (
     <Layout>

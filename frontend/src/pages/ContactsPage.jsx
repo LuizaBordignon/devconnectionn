@@ -22,13 +22,16 @@ export default function ContactsPage() {
     load();
   }
 
-    async function handleDelete(id) {
-    try {
-        await deleteContact(id);
-        load();
-    } catch (err) {
-        alert(err.response?.data?.message || 'Erro ao apagar contato.');
-    }
+async function handleDelete(id) {
+  if (!window.confirm('Tem certeza que deseja excluir este contato?')) {
+    return;
+  }
+  try {
+    await deleteContact(id);
+    load();
+  } catch (err) {
+    alert(err.response?.data?.message || 'Erro ao apagar contato.');
+  }
 }
 
     return (
