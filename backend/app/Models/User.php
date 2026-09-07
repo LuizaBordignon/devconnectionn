@@ -40,4 +40,9 @@ class User extends Authenticatable
         {
             return $this->hasMany(Entry::class);
         }
+
+     public function periodClosures(): HasMany
+        {
+            return $this->hasMany(PeriodClosure::class);
+        }
 }

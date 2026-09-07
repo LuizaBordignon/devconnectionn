@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PeriodClosureController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\EntryController;
 use App\Http\Controllers\Api\AuthController;
@@ -22,5 +23,7 @@ Route::middleware('auth:sanctum')->group(function () { //middleware checa se o t
     Route::apiResource('entries', EntryController::class);
     Route::post('/entries/{entry}/liquidar', [EntryController::class, 'liquidar']);
     Route::get('/relatorio/periodo', [ReportController::class, 'periodo']);
+    Route::post('/relatorio/fechamento', [PeriodClosureController::class, 'store']);
+    Route::get('/relatorio/fechamento/{periodClosure}', [PeriodClosureController::class, 'show']);
 
 });

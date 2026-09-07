@@ -24,22 +24,23 @@ class ReportController extends Controller
         $liquidado = 0;
         $vencido = 0;
 
-        foreach ($entries as $entry) {
-            if ($entry->status === 'quitada') {
-                $liquidado += $entry->paid_amount;
-                continue;
-            }
+        public function periodo(Request $request)
+            {
+                $data = $request->validate([
+                    'start_date' => ['required', 'date'],
+                    'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+                ]);
 
-            if ($entry->type === 'pagar') {
-                $aPagar += $entry->amount;
-            } else {
-                $aReceber += $entry->amount;
-            }
+                $entries = $request->user()
+                    ->entries()
+                    ->whereBetween('due_date', [$data['start_date'], $data['end_date']])
+                    ->get();
 
-            if ($entry->status === 'atrasada') {
-                $vencido += $entry->amount;
+                return response()->json([
+                    'periodo' => $data,
+                    ...Entry::resumoDoPeriodo($entries),
+                ]);
             }
-        }
 
         return response()->json([
             'periodo' => $data,
