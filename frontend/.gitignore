@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (a URL da API muda por ambiente; use .env.example
+# como referência e configure o valor real no painel da Vercel)
+.env
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
