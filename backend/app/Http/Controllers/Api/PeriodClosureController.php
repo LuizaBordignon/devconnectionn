@@ -16,14 +16,13 @@ class PeriodClosureController extends Controller
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
         ]);
 
-        $closure = PeriodClosure::firstOrNew([
+        $closure = PeriodClosure::firstOrNew([ //1. busca ou monta em memória, SEM salvar
             'user_id' => $request->user()->id,
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
         ]);
 
-        // Só bloqueia se já tem um pedido EM ANDAMENTO pra esse período 
-        // um fechamento já concluído ou que falhou pode ser refeito.
+        // Se o fechamento já existe e está em andamento ou pendente, retornamos ele sem criar um novo
         if ($closure->exists && in_array($closure->status, ['pendente', 'processando'])) {
             return response()->json($closure, 202);
         }
@@ -31,7 +30,7 @@ class PeriodClosureController extends Controller
         $closure->status = 'pendente';
         $closure->error_message = null;
         $closure->completed_at = null;
-        $closure->save();
+        $closure->save(); // aqui grava de fato
 
         ProcessPeriodClosureJob::dispatch($closure->id);
 
